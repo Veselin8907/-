@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<title>БАЗА ДАННИ</title>
+
+<style>
+body{
+ font-family:Arial;
+ background:#ffffff;
+ padding:10px;
+}
+
+h2{text-align:center}
+
+input,button{
+ margin:4px;
+ padding:8px;
+ border-radius:6px;
+ border:1px solid #999;
+}
+
+button{cursor:pointer;font-weight:bold}
+
+.btn-add{background:#4CAF50;color:#fff}
+.btn-db{background:#2196F3;color:#fff}
+.btn-search{background:#607D8B;color:#fff}
+.btn-exit{background:#777;color:#fff}
+.btn-del{background:#f44336;color:#fff}
+.btn-print{background:#9C27B0;color:#fff}
+.btn-share{background:#FF9800;color:#fff}
+
+.hidden{display:none}
+
+table{
+ border-collapse:collapse;
+ width:100%;
+ background:#fff;
+}
+
+th,td{
+ border:1px solid #999;
+ padding:6px;
+}
+
+th{background:#ddd}
+
+.card{
+ max-width:520px;
+ margin:auto;
+ background:#fff;
+ padding:12px;
+ border-radius:10px;
+ box-shadow:0 4px 10px #0003;
+}
+
+.row{display:flex;gap:10px}
+
+.photo{
+ width:140px;
+ height:180px;
+ border:2px solid #555;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ font-size:14px;
+}
+
+.photo img{
+ width:100%;
+ height:100%;
+ object-fit:cover;
+}
+
+@media print{
+ body{background:#fff}
+ button,input{display:none}
+}
+</style>
+</head>
+
+<body>
+
+<h2>БАЗА ДАННИ</h2>
+
+<button class="btn-add" onclick="showAdd()">+ Добави</button>
+<button class="btn-db" onclick="showDB()">База данни</button>
+
+<hr>
+
+<input id="q" placeholder="Търсене по име, ЕГН или МПС">
+<button class="btn-search" onclick="doSearch()">Търси</button>
+
+<hr>
+
+<!-- ДОБАВЯНЕ -->
+<div id="addBox" class="hidden">
+<h3>Добавяне</h3>
+
+<input id="fname" placeholder="Име">
+<input id="mname" placeholder="Презиме">
+<input id="lname" placeholder="Фамилия"><br>
+
+<input id="egn" placeholder="ЕГН">
+<input id="birth" placeholder="Дата на раждане" readonly><br>
+
+<input id="gender" placeholder="Пол"><br>
+
+<input id="city" placeholder="Град">
+<input id="village" placeholder="Село">
+<input id="street" placeholder="Улица"><br>
+
+<input id="reg" placeholder="Рег. номер МПС"><br>
+
+<input type="file" id="photoInput" accept="image/*"><br><br>
+
+<button class="btn-add" onclick="save()">Запази</button>
+<button class="btn-exit" onclick="hideAll()">Изход</button>
+</div>
+
+<!-- КАРТА -->
+<div id="cardBox" class="hidden"></div>
+
+<!-- БАЗА ДАННИ -->
+<div id="dbBox" class="hidden"></div>
+
+<script>
+let db = JSON.parse(localStorage.getItem("db")||"[]");
+let photoData="";
+
+egn.oninput=function(){
+ if(!/^\d{10}$/.test(this.value)){birth.value="";return;}
+ let y=+this.value.substr(0,2),
+     m=+this.value.substr(2,2),
+     d=this.value.substr(4,2),
+     year;
+ if(m>40){year=2000+y;m-=40}
+ else if(m>20){year=1800+y;m-=20}
+ else{year=1900+y}
+ birth.value=`${d}.${String(m).padStart(2,"0")}.${year}`;
+}
+
+photoInput.onchange=e=>{
+ if(!e.target.files[0])return;
+ const r=new FileReader();
+ r.onload=()=>photoData=r.result;
+ r.readAsDataURL(e.target.files[0]);
+}
+
+function hideAll(){
+ addBox.classList.add("hidden");
+ cardBox.classList.add("hidden");
+ dbBox.classList.add("hidden");
+}
+
+function showAdd(){hideAll();addBox.classList.remove("hidden");}
+
+function save(){
+ if(!fname.value||!egn.value){
+  alert("Име и ЕГН са задължителни");
+  return;
+ }
+ db.push({
+  fname:fname.value,mname:mname.value,lname:lname.value,
+  egn:egn.value,birth:birth.value,gender:gender.value,
+  city:city.value,village:village.value,street:street.value,
+  reg:reg.value,photo:photoData
+ });
+ localStorage.setItem("db",JSON.stringify(db));
+ alert("Записът е добавен");
+ location.reload();
+}
+
+function doSearch(){
+ const v=q.value.toLowerCase().trim();
+ if(!v){alert("Въведи критерий");return;}
+ const i=db.findIndex(r=>
+  [r.fname,r.mname,r.lname,r.egn,r.reg]
+  .filter(Boolean).join(" ").toLowerCase().includes(v)
+ );
+ if(i>-1) view(i);
+ else alert("Няма намерен запис");
+}
+
+function view(i){
+ hideAll();
+ const r=db[i];
+ let h=`<div class="card"><div class="row">
+ <div class="photo">${r.photo?`<img src="${r.photo}">`:"Липсва снимка"}</div>
+ <div>`;
+ const labels={
+  fname:"Име",mname:"Презиме",lname:"Фамилия",
+  egn:"ЕГН",birth:"Дата на раждане",gender:"Пол",
+  city:"Град",village:"Село",street:"Улица",reg:"МПС"
+ };
+ for(let k in labels) if(r[k]) h+=`<div><b>${labels[k]}:</b> ${r[k]}</div>`;
+ h+=`</div></div><br>
+ <button class="btn-exit" onclick="hideAll()">Изход</button></div>`;
+ cardBox.innerHTML=h;
+ cardBox.classList.remove("hidden");
+}
+
+function showDB(){
+ hideAll();
+ let h=`<h3>База данни</h3>
+ <table><tr><th></th><th>Три имена</th><th>ЕГН</th><th></th></tr>`;
+ db.forEach((r,i)=>{
+  h+=`<tr>
+  <td><input type="checkbox" data-i="${i}"></td>
+  <td>${r.fname} ${r.mname} ${r.lname}</td>
+  <td>${r.egn}</td>
+  <td>
+   <button onclick="view(${i})">👁</button>
+   <button class="btn-del" onclick="del(${i})">🗑</button>
+  </td></tr>`;
+ });
+ h+=`</table><br>
+
+ <button class="btn-print" onclick="window.print()">🖨 Принтиране</button>
+ <button class="btn-share" onclick="shareRecords()">📲 Сподели записи</button>
+
+ <input type="file" id="importFile" hidden onchange="importRecords(this)">
+ <button class="btn-share" onclick="importFile.click()">⬇ Импорт</button>
+
+ <br><br>
+ <button class="btn-exit" onclick="hideAll()">Изход</button>`;
+ dbBox.innerHTML=h;
+ dbBox.classList.remove("hidden");
+}
+
+function del(i){
+ if(!confirm("Изтриване?"))return;
+ db.splice(i,1);
+ localStorage.setItem("db",JSON.stringify(db));
+ showDB();
+}
+
+async function shareRecords(){
+ if(!navigator.share){
+  alert("Споделяне не се поддържа");
+  return;
+ }
+ const file=new File(
+  [JSON.stringify(db,null,2)],
+  "records.json",
+  {type:"application/json"}
+ );
+ try{
+  await navigator.share({
+   title:"База данни",
+   text:"Прехвърляне на записи",
+   files:[file]
+  });
+ }catch(e){}
+}
+
+function importRecords(input){
+ const r=new FileReader();
+ r.onload=()=>{
+  try{
+   const data=JSON.parse(r.result);
+   data.forEach(x=>db.push(x));
+   localStorage.setItem("db",JSON.stringify(db));
+   alert("Данните са добавени");
+   showDB();
+  }catch{
+   alert("Невалиден файл");
+  }
+ };
+ r.readAsText(input.files[0]);
+}
+</script>
+
+</body>
+</html>
